@@ -292,6 +292,21 @@ describe("blitz copy", () => {
     ]);
   });
 
+  it("shows the temp check under the take", () => {
+    const grade = { boldness: 1, spice: 0.67, clarity: 1 };
+    const message = blitzTakeMessage(samTake, { points: 4, total: 18, left: 7, blocked: null }, { late: false, grade });
+    assert.deepEqual(message.split("\n"), [
+      "🧾 #14 LOCKED · Sam +4 ⚡",
+      '"The Giants win."',
+      "🌡️ Temp check: 90° · long shot · spicy · clear-cut",
+      "Due: Sep 25, 2026 · Sam's blitz total: 18 · 7 takes left"
+    ]);
+    assert.equal(
+      blitzTakeMessage(samTake, { points: 4, total: 18, left: 7, blocked: null }, { late: false, grade: null }),
+      blitzTakeMessage(samTake, { points: 4, total: 18, left: 7, blocked: null }, { late: false })
+    );
+  });
+
   it("confirms a week take without the lightning", () => {
     const message = blitzTakeMessage({ ...samTake, deadline: "2026-09-30" }, { points: 2, total: 2, left: 9, blocked: null }, { late: false });
     assert.equal(message.split("\n")[0], "🧾 #14 LOCKED · Sam +2");

@@ -12,6 +12,8 @@ npx lakebed deploy
 - `server/schema.ts`: tables and indexes.
 - `server/index.ts`: the `capsule()` definition that wires queries, mutations, and bot endpoints.
 - `server/bot.ts`: chat commands, receipt capture and nominations, chat settlement, reminders, Take Blitz announcements.
+- `server/jev.ts`: calls TypeSafe's Jev to grade blitz takes for their temp checks. The questions, levels, and
+  temperature weights are in `shared/jev.ts`.
 - `server/web.ts`: web views and mutations. Every one requires Google sign-in and group membership.
 - `server/model.ts`: shared row helpers (names, cards, identity linking, Take Blitz scoring and the crown).
 - `shared/`: pure logic shared with the client and the bridge. `bot-api.ts` is the bridge contract. `guide.ts` holds the
@@ -36,6 +38,8 @@ Every route requires `Authorization: Bearer <RECEIPTS_BOT_SECRET>`.
 
 - `RECEIPTS_BOT_SECRET` (required, 24+ characters): shared with the bridge.
 - `APP_URL` (recommended): public origin used in links the bot sends.
+- `TYPESAFE_API_KEY` (optional): turns on instant temp checks for blitz takes. Without it, blitz takes go unchecked.
 
 Server code must stay compatible with Lakebed's anonymous-code scan: no `while` loops, `globalThis`, timers, or
-`process`. `npx lakebed build --target anonymous` checks this.
+`process`. `npx lakebed build --target anonymous` checks this. Its one expected complaint is the outbound `fetch` in
+`server/jev.ts`, which claimed deploys allow.

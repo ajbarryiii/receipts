@@ -465,6 +465,41 @@ describe("reply guardrails", () => {
     assert.equal((await app.rows("receipts")).length, 2);
   });
 
+  it("keeps identical predictions from different people with the same display name", async (t) => {
+    useClock(t);
+    for (const [handle, userId] of [[JR_HANDLE, "user-jr"], [CONNOR_HANDLE, "user-connor"]]) {
+      await app.mutation("redeemInvite", account(userId, "Sam"), tokenFrom((await app.chat("@receipts join", { senderHandle: handle })).reply));
+      await app.chat("@receipts I say the Giants win tomorrow", { senderHandle: handle });
+    }
+    const rows = await app.rows("receipts");
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows.map((row) => row.subjectUserId), ["user-jr", "user-connor"]);
+  });
+
+  it("keeps nominations for different authors with matching masked phone numbers", async (t) => {
+    useClock(t);
+    const otherAuthor = "+15554440123";
+    assert.equal(maskHandle(JR_HANDLE), maskHandle(otherAuthor));
+    for (const authorHandle of [JR_HANDLE, otherAuthor]) {
+      await app.reply("@receipts #take by Apr 15 2027", { text: QUOTE, authorHandle }, { senderHandle: ALEX_HANDLE });
+    }
+    const rows = await app.rows("receipts");
+    assert.equal(rows.length, 2);
+    assert.notEqual(rows[0].subjectIdentityId, rows[1].subjectIdentityId);
+  });
+
+  it("recognizes one person's duplicate across their linked phone and email aliases", async (t) => {
+    useClock(t);
+    for (const [handle, alias] of [[JR_HANDLE, "JR"], [JR_EMAIL, "Junior"]]) {
+      await app.chat(`@receipts call me ${alias}`, { senderHandle: handle });
+      await app.mutation("redeemInvite", JR, tokenFrom((await app.chat("@receipts join", { senderHandle: handle })).reply));
+    }
+    await app.chat("@receipts I say the Giants win tomorrow", { senderHandle: JR_HANDLE });
+    const again = await app.chat("@receipts I say the Giants win tomorrow", { senderHandle: JR_EMAIL });
+    assert.match(again.reply ?? "", /already Receipt #1/);
+    assert.equal((await app.rows("receipts")).length, 1);
+  });
+
   it("allows the same claim again once the earlier one is settled", async (t) => {
     useClock(t);
     await app.chat("@receipts #take JR says the Giants win the division by Oct 1 2027", { senderHandle: ALEX_HANDLE });

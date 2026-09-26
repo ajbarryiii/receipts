@@ -324,6 +324,31 @@ describe("blitz takes", () => {
     assert.equal((await receipt(1)).blitzPoints, undefined);
   });
 
+  it("shares one person's blitz cap across their linked phone and email", async (t) => {
+    const clock = useClock(t);
+    await meetTheGroup(true);
+    const email = "sam@icloud.com";
+    await app.mutation("redeemInvite", account("user-sam", "Sam"), tokenFrom(await say(email, "@receipts join")));
+    await startBlitz(clock);
+    for (let n = 1; n <= 10; n += 1) {
+      await say(n <= 5 ? SAM : email, `@receipts thing ${n} happens tomorrow`);
+    }
+    const capped = await reply(email, "@receipts thing 11 happens tomorrow");
+    assert.match(capped, /used all 10/);
+    assert.equal((await receipt(11)).blitzPoints, undefined);
+  });
+
+  it("scores a sender's named take when that alias belongs to their other linked handle", async (t) => {
+    const clock = useClock(t);
+    await meetTheGroup(true);
+    const email = "sam@icloud.com";
+    await app.mutation("redeemInvite", account("user-sam", "Sam"), tokenFrom(await say(email, "@receipts join")));
+    await startBlitz(clock);
+    await say(email, "@receipts Sam says the Giants win tomorrow");
+    assert.equal((await receipt(1)).blitzPoints, 4);
+    assert.equal((await receipt(1)).subjectUserId, "user-sam");
+  });
+
   it("make tonight's takes due tomorrow morning instead of right away", async (t) => {
     const clock = useClock(t);
     await meetTheGroup();

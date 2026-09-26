@@ -51,6 +51,12 @@ settle. A day before the anointing the bot posts a last call listing unsettled b
 takes keep half and the result is final. Whoever wears the crown gets a 👑 next to their name in bot messages and on the
 website. Blitz points never count toward Take Score. Each group gets one blitz.
 
+Every take someone logs about themselves during the blitz also gets an instant 🌡️ temp check from 0° to 100°, graded
+by TypeSafe's [Jev](https://docs.typesafe.ai/introduction) model: how bold it is, how much the group would argue about
+it, and how cleanly it can be settled. It shows up in the bot's reply and on the website. It's for bragging rights only:
+temp checks never change blitz points or Take Score. Without a `TYPESAFE_API_KEY`, or when Jev doesn't answer within a
+couple of seconds, the take is logged without one.
+
 Guardrails: a message can only be captured once (a second `@receipts` reply to it points at the existing receipt), and
 the same open take about the same person with the same deadline isn't logged twice.
 
@@ -82,6 +88,7 @@ For local bot testing, put a secret in `app/.env.lakebed.server` (gitignored):
 
 ```text
 RECEIPTS_BOT_SECRET=<at least 24 random characters>
+TYPESAFE_API_KEY=<optional: a key from https://console.typesafe.ai/keys for temp checks>
 ```
 
 The website requires Google sign-in, which works in `lakebed dev` on localhost.
@@ -91,7 +98,8 @@ The website requires Google sign-in, which works in `lakebed dev` on localhost.
 1. **Deploy the app.** From `app/`: `npx lakebed auth login`, then `npx lakebed deploy`, then commit the generated
    `app/lakebed.json`. The bot secret only reaches hosted Lakebed once the deploy is claimed.
 2. **Set secrets.** In `app/.env.lakebed.server` set `RECEIPTS_BOT_SECRET` and `APP_URL`
-   (e.g. `https://receipts.lakebed.app`, used in links the bot sends). Run `npx lakebed deploy` again to sync them.
+   (e.g. `https://receipts.lakebed.app`, used in links the bot sends), plus `TYPESAFE_API_KEY` for temp checks.
+   Run `npx lakebed deploy` again to sync them.
 3. **Optional:** `npx lakebed domains add <name>.lakebed.app`.
 4. **Set up the Mac and bridge** as described in [bridge/README.md](bridge/README.md).
 5. Add the Receipts Apple Account to your group chat and send `@receipts lfg` to start the Take Blitz (or

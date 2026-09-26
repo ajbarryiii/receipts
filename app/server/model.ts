@@ -3,6 +3,7 @@
 import { blitzBoard, blitzPhase, blitzSchedule, crownHolders, keptPoints, type BlitzSchedule } from "../shared/blitz";
 import type { BlitzResults, ChatReceipt } from "../shared/format";
 import { crownChangeMessage, crownedName, maskHandle, typeLabel } from "../shared/format";
+import type { TakeGrade } from "../shared/jev";
 import { nameKey } from "../shared/parse";
 import type { ScoredReceipt } from "../shared/scoring";
 import {
@@ -119,8 +120,18 @@ export function toCard(receipt: ReceiptRow, book: NameBook): ReceiptCard {
     voteCount: receipt.voteCount,
     settledAt: receipt.settledAt ?? null,
     nomination: nominationOf(receipt, book),
-    callout: calloutOf(receipt, book)
+    callout: calloutOf(receipt, book),
+    tempCheck: gradeOf(receipt)
   };
+}
+
+/** Jev's grade, for blitz takes it graded when they were logged. */
+function gradeOf(receipt: ReceiptRow): TakeGrade | null {
+  const { jevBoldness, jevSpice, jevClarity } = receipt;
+  if (typeof jevBoldness !== "number" || typeof jevSpice !== "number" || typeof jevClarity !== "number") {
+    return null;
+  }
+  return { boldness: jevBoldness, spice: jevSpice, clarity: jevClarity };
 }
 
 /** `crown` holds the refs wearing the Take Blitz crown; their names get a 👑. */

@@ -395,7 +395,8 @@ describe("group, receipt, and profile views", () => {
       voteCount: 0,
       settledAt: null,
       nomination: null,
-      callout: null
+      callout: null,
+      tempCheck: null
     });
     assert.deepEqual(group.nominations, []);
   });
