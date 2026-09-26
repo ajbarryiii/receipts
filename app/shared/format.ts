@@ -2,6 +2,7 @@
 
 import { BLITZ_TAKE_CAP, CALLOUT_POINTS, LIGHTNING_POINTS, WEEK_POINTS } from "./blitz";
 import { formatDate, formatDateTime } from "./dates";
+import { gradeLabels, takeTemp, type TakeGrade } from "./jev";
 import type { BlitzPhase, BlitzStanding, CaptureMode, IsoDate, ReceiptStatus, ReceiptType, SettlementOutcome, SubjectRef } from "./types";
 
 /** Everything the bot needs to describe one receipt in chat. */
@@ -375,8 +376,8 @@ export function blitzStatusMessage(phase: BlitzPhase, times: BlitzTimes, holders
   }
 }
 
-/** Short confirmation for a take the sender logs about themselves during the blitz. */
-export function blitzTakeMessage(receipt: ChatReceipt, result: BlitzTakeResult, options: { late: boolean }): string {
+/** Short confirmation for a take the sender logs about themselves during the blitz, with its temp check when it has one. */
+export function blitzTakeMessage(receipt: ChatReceipt, result: BlitzTakeResult, options: { late: boolean; grade?: TakeGrade | null }): string {
   const bonus = result.points > 0 ? ` +${result.points}${result.points === LIGHTNING_POINTS ? " ⚡" : ""}` : "";
   const due = receipt.deadline ? `Due: ${formatDate(receipt.deadline)}` : "Due: no date";
   let standing: string;
@@ -388,7 +389,11 @@ export function blitzTakeMessage(receipt: ChatReceipt, result: BlitzTakeResult, 
     const left = result.left > 0 ? `${result.left} ${result.left === 1 ? "take" : "takes"} left` : "That was your last one.";
     standing = `${receipt.subjectName}'s blitz total: ${result.total} · ${left}`;
   }
-  const lines = [`🧾 #${receipt.number} LOCKED · ${receipt.subjectName}${bonus}`, quote(receipt), `${due} · ${standing}`];
+  const lines = [`🧾 #${receipt.number} LOCKED · ${receipt.subjectName}${bonus}`, quote(receipt)];
+  if (options.grade) {
+    lines.push(tempCheckLine(options.grade));
+  }
+  lines.push(`${due} · ${standing}`);
   if (receipt.deadline && receipt.dateAmbiguous) {
     lines.push(`Reply "@receipts cancel ${receipt.number}" if I read the date wrong.`);
   }
@@ -396,6 +401,11 @@ export function blitzTakeMessage(receipt: ChatReceipt, result: BlitzTakeResult, 
     lines.push(LATE_LINE);
   }
   return lines.join("\n");
+}
+
+/** "🌡️ Temp check: 90° · long shot · spicy · clear-cut". */
+function tempCheckLine(grade: TakeGrade): string {
+  return [`🌡️ Temp check: ${takeTemp(grade)}°`, ...gradeLabels(grade)].join(" · ");
 }
 
 /** Sent when the blitz window closes: the board and the provisional crown. */

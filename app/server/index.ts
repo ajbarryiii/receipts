@@ -16,6 +16,7 @@ import type { IsoDate, SettlementOutcome, SubjectRef } from "../shared/types";
 import { acknowledgeReply, handleIncomingMessage, listDueAnnouncements, listDueReminders, markAnnounced, markReminded } from "./bot";
 import type { BotCtx, BotReadCtx } from "./db";
 import { bearerMatches, MIN_BOT_SECRET_LENGTH, resolveAppUrl } from "./http";
+import { jevGrader } from "./jev";
 import { schema } from "./schema";
 import {
   claimName,
@@ -109,7 +110,8 @@ export default capsule({
       try {
         const message = parseIncomingMessage(await readJson(req));
         const appUrl = resolveAppUrl(ctx.env.APP_URL, req.url);
-        return json(await handleIncomingMessage(asBot(ctx), message, { appUrl, now: Date.now() }));
+        const gradeTake = jevGrader(ctx.env.TYPESAFE_API_KEY, ctx.log);
+        return json(await handleIncomingMessage(asBot(ctx), message, { appUrl, now: Date.now(), gradeTake }));
       } catch (error) {
         return badRequest(error);
       }

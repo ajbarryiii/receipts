@@ -2,6 +2,7 @@ import { Link, useParams } from "lakebed/client";
 import { useEffect, useState } from "preact/hooks";
 import { formatDate } from "../../shared/dates";
 import { flames, outcomeLabel, quoteStatement, typeLabel } from "../../shared/format";
+import { gradeLabels, takeTemp } from "../../shared/jev";
 import { TAKE_POINTS, UNRATED_TAKE_POINTS } from "../../shared/scoring";
 import { SETTLEMENT_OUTCOMES, type SettlementOutcome } from "../../shared/types";
 import { client, type Detail } from "../api";
@@ -109,6 +110,14 @@ function ReceiptPaper({ detail }: { detail: Detail }) {
             <dt className="text-stone-500">HEAT</dt>
             <dd>
               <Flames heat={card.heat} /> {card.voteCount > 0 ? `(${card.voteCount} vote${card.voteCount === 1 ? "" : "s"})` : ""}
+            </dd>
+          </>
+        ) : null}
+        {card.tempCheck ? (
+          <>
+            <dt className="text-stone-500">TEMP CHECK</dt>
+            <dd>
+              <span className="font-bold">{takeTemp(card.tempCheck)}°</span> · {gradeLabels(card.tempCheck).join(" · ")}
             </dd>
           </>
         ) : null}

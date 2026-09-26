@@ -1,6 +1,8 @@
 // Domain vocabulary and the view shapes the web client receives.
 // Pure TypeScript: shared by server, client, and tests.
 
+import type { TakeGrade } from "./jev";
+
 export const RECEIPT_TYPES = ["take", "conditional", "promise", "bet", "generic"] as const;
 export type ReceiptType = (typeof RECEIPT_TYPES)[number];
 
@@ -98,6 +100,8 @@ export type ReceiptCard = {
   nomination: NominationView | null;
   /** Set for old takes put on the record with "exposed" or "told you so". */
   callout: CalloutView | null;
+  /** Jev's grade behind the take's temp check, for blitz takes it graded when they were logged. */
+  tempCheck: TakeGrade | null;
 };
 
 export type Standing = {

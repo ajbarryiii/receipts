@@ -97,13 +97,18 @@ export const schema = {
     /** Take Blitz points the take earned when it was logged. Unset for everything that isn't a point-earning blitz take. */
     blitzPoints: number().optional(),
     /** Blitz points the take keeps, fixed by its latest settlement before the crown was anointed. */
-    blitzKept: number().optional()
+    blitzKept: number().optional(),
+    /** Jev's grade for a blitz take, each 0–1 (see shared/jev.ts). Unset when Jev didn't grade it. */
+    jevBoldness: number().optional(),
+    jevSpice: number().optional(),
+    jevClarity: number().optional()
   })
     .index("by_group_number", ["groupId", "number"])
     .index("by_command", ["commandMessageGuid"])
     .index("by_group_source", ["groupId", "sourceMessageGuid"])
     .index("by_due", ["status", "remindedAt", "dueAt"])
     .index("by_group_subject_key", ["groupId", "subjectKey"])
+    .index("by_group_subject_user", ["groupId", "subjectUserId"])
     .index("by_subject_identity", ["subjectIdentityId"])
     .index("by_creator_identity", ["createdByIdentityId"])
     .index("by_group_blitz", ["groupId", "blitzPoints"]),

@@ -3,6 +3,7 @@
 import type { DueAnnouncement, DueReminder, IncomingMessage, IncomingMessageResult } from "../shared/bot-api";
 import { BLITZ_TAKE_CAP, blitzPoints, blitzSchedule, CALLOUT_POINTS, defaultBlitzDeadline, type BlitzSchedule } from "../shared/blitz";
 import { dueAtFrom, findDeadline, formatDate, localDate } from "../shared/dates";
+import { dueInWords, type TakeGrade } from "../shared/jev";
 import {
   acceptedMessage,
   anointedMessage,
@@ -34,6 +35,7 @@ import { inferReceiptType, nameKey, parseBotMessage, type BotCommand, type Recei
 import { takePoints } from "../shared/scoring";
 import type { Callout, IsoDate, ReceiptType, SettlementOutcome, SubjectRef } from "../shared/types";
 import type { BotCtx, BotReadCtx, GroupRow, IdentityRow, ReadDb, ReceiptRow, WriteDb } from "./db";
+import type { TakeGrader } from "./jev";
 import {
   adoptAlias,
   adoptNamedReceipts,
@@ -48,11 +50,11 @@ import {
   identityRef,
   loadBlitz,
   loadCrown,
-  MAX_GROUP_RECEIPTS,
   receiptByNumber,
   receiptUrl,
   renameSubject,
   settleBlockReason,
+  subjectRefOf,
   toChatReceipt
 } from "./model";
 import { randomToken } from "./tokens";
@@ -61,6 +63,8 @@ export type BotOptions = {
   /** Public web origin used in links, e.g. "https://receipts.lakebed.app". */
   appUrl: string;
   now: number;
+  /** Grades blitz takes with Jev for their temp checks as they're logged. Without it, blitz takes go unchecked. */
+  gradeTake?: TakeGrader;
 };
 
 /** Join links (identity claims) expire quickly because they are posted in a shared chat. */
@@ -404,7 +408,10 @@ async function scoreBlitzEntry(
 ): Promise<BlitzTakeResult> {
   const { db, group, identity, options } = context;
   const blitz = await loadBlitz(db, group, options.now);
-  const used = blitz?.takes.filter((row) => row.createdByIdentityId === identity.id && row.status !== "canceled").length ?? 0;
+  const used = blitz?.takes.filter((row) =>
+    row.status !== "canceled" &&
+    (row.createdByIdentityId === identity.id || (identity.userId !== undefined && row.createdByUserId === identity.userId))
+  ).length ?? 0;
   const total = blitz?.board.find((standing) => standing.subjectRef === identityRef(identity))?.total ?? 0;
   const left = BLITZ_TAKE_CAP - used;
   if (left <= 0) {
@@ -414,6 +421,19 @@ async function scoreBlitzEntry(
     return { points: 0, total, left, blocked: "late" };
   }
   return { points, total: earnsForSender ? total + points : total, left: left - 1, blocked: null };
+}
+
+/**
+ * Jev's grade for a blitz take's temp check, or null without a grader or when Jev can't answer. Callers ask before the
+ * receipt takes a number, so a slow answer doesn't hold the group row.
+ */
+async function gradeBlitzTake(statement: string, deadline: IsoDate, context: CommandContext): Promise<TakeGrade | null> {
+  const { gradeTake } = context.options;
+  return gradeTake ? gradeTake({ take: statement, due: dueInWords(deadline, context.today) }) : null;
+}
+
+function gradeFields(grade: TakeGrade | null) {
+  return grade ? { jevBoldness: grade.boldness, jevSpice: grade.spice, jevClarity: grade.clarity } : {};
 }
 
 async function createReceipt(draft: ReceiptDraft, context: CommandContext): Promise<string> {
@@ -441,14 +461,16 @@ async function createReceipt(draft: ReceiptDraft, context: CommandContext): Prom
   }
 
   // During the blitz, everything people say about themselves is a take, due by the end of the week unless dated.
-  const blitz = subjectIdentityId === identity.id ? liveBlitz(group, message.sentAt) : null;
+  const isSender = subjectIdentityId === identity.id || (identity.userId !== undefined && subjectUserId === identity.userId);
+  const blitz = isSender ? liveBlitz(group, message.sentAt) : null;
   let { type, deadline } = draft;
   if (blitz && !deadline && (type === "take" || (type === "generic" && !draft.typeExplicit))) {
     type = "take";
     deadline = { date: defaultBlitzDeadline(blitz, message.utcOffsetMinutes), ambiguous: false };
   }
 
-  const duplicate = await findOpenDuplicate(db, group.id, subjectName, draft.statement, deadline?.date ?? null);
+  const subject = subjectRefOf({ subjectUserId, subjectIdentityId, subjectKey: nameKey(subjectName) });
+  const duplicate = await findOpenDuplicate(db, group.id, subject, draft.statement, deadline?.date ?? null);
   if (duplicate) {
     return `🧾 That's already Receipt #${duplicate.number}.`;
   }
@@ -458,6 +480,7 @@ async function createReceipt(draft: ReceiptDraft, context: CommandContext): Prom
     blitz && type === "take" && deadline && dueAt !== null
       ? await scoreBlitzEntry(context, blitzPoints({ deadline: deadline.date, dueAt }, today, blitz), true)
       : null;
+  const grade = scored && deadline ? await gradeBlitzTake(draft.statement, deadline.date, context) : null;
 
   const number = group.nextNumber;
   await db.groups.update(group.id, { nextNumber: number + 1 });
@@ -480,10 +503,11 @@ async function createReceipt(draft: ReceiptDraft, context: CommandContext): Prom
     madeAt: message.sentAt,
     loggedAt: options.now,
     ...(deadline && dueAt !== null ? { deadline: deadline.date, dueAt, dateAmbiguous: deadline.ambiguous } : {}),
-    ...(scored && scored.points > 0 ? { blitzPoints: scored.points } : {})
+    ...(scored && scored.points > 0 ? { blitzPoints: scored.points } : {}),
+    ...gradeFields(grade)
   });
   if (scored) {
-    return blitzTakeMessage(toChatReceipt(receipt, crown), scored, { late: stale });
+    return blitzTakeMessage(toChatReceipt(receipt, crown), scored, { late: stale, grade });
   }
   return confirmationMessage(toChatReceipt(receipt, crown), { today, late: stale });
 }
@@ -561,7 +585,7 @@ async function captureReceipt(command: Extract<BotCommand, { kind: "capture" }>,
     return `🧾 By when? Reply to that message again with "@receipts #${type} by Apr 15 2027".`;
   }
 
-  const duplicate = await findOpenDuplicate(db, group.id, authorName, statement, deadline?.date ?? null);
+  const duplicate = await findOpenDuplicate(db, group.id, identityRef(author), statement, deadline?.date ?? null);
   if (duplicate) {
     return alreadyCapturedMessage(duplicate, identity);
   }
@@ -571,6 +595,7 @@ async function captureReceipt(command: Extract<BotCommand, { kind: "capture" }>,
     blitz && type === "take" && deadline && dueAt !== null
       ? await scoreBlitzEntry(context, blitzPoints({ deadline: deadline.date, dueAt }, today, blitz), true)
       : null;
+  const grade = scored && deadline ? await gradeBlitzTake(statement, deadline.date, context) : null;
   const number = group.nextNumber;
   await db.groups.update(group.id, { nextNumber: number + 1 });
   const receipt = await db.receipts.insert({
@@ -595,11 +620,12 @@ async function captureReceipt(command: Extract<BotCommand, { kind: "capture" }>,
     loggedAt: options.now,
     ...(deadline && dueAt !== null ? { deadline: deadline.date, dueAt, dateAmbiguous: deadline.ambiguous } : {}),
     ...(selfCapture ? {} : { nominatedAt: options.now }),
-    ...(scored && scored.points > 0 ? { blitzPoints: scored.points } : {})
+    ...(scored && scored.points > 0 ? { blitzPoints: scored.points } : {}),
+    ...gradeFields(grade)
   });
 
   if (scored) {
-    return blitzTakeMessage(toChatReceipt(receipt, crown), scored, { late: stale });
+    return blitzTakeMessage(toChatReceipt(receipt, crown), scored, { late: stale, grade });
   }
   if (selfCapture) {
     return confirmationMessage(toChatReceipt(receipt, crown), { today, late: stale });
@@ -648,7 +674,7 @@ async function calloutReceipt(callout: Callout, context: CommandContext): Promis
     return '🧾 That\'s not your message. To call someone out, reply to it with "@receipts exposed".';
   }
   const authorName = await identityName(db, author);
-  const duplicate = await findOpenDuplicate(db, group.id, authorName, statement, null);
+  const duplicate = await findOpenDuplicate(db, group.id, identityRef(author), statement, null);
   if (duplicate) {
     return alreadyCapturedMessage(duplicate, identity);
   }
@@ -757,16 +783,22 @@ async function settleInChat(number: number, outcome: SettlementOutcome, context:
 async function findOpenDuplicate(
   db: WriteDb,
   groupId: string,
-  subjectName: string,
+  subjectRef: SubjectRef,
   statement: string,
   deadline: IsoDate | null
 ): Promise<ReceiptRow | null> {
-  const key = nameKey(subjectName);
+  const key = subjectRef.slice(2);
   const said = nameKey(statement);
-  const sameSubject = await db.receipts.withIndex("by_group_subject_key", (q) => q.eq("groupId", groupId).eq("subjectKey", key)).take(100);
+  // Names are display text: two people may share one, and one account may use multiple chat aliases.
+  const sameSubject = subjectRef.startsWith("u:")
+    ? await db.receipts.withIndex("by_group_subject_user", (q) => q.eq("groupId", groupId).eq("subjectUserId", key)).take(100)
+    : subjectRef.startsWith("i:")
+      ? await db.receipts.withIndex("by_subject_identity", (q) => q.eq("subjectIdentityId", key)).take(100)
+      : await db.receipts.withIndex("by_group_subject_key", (q) => q.eq("groupId", groupId).eq("subjectKey", key)).take(100);
   return (
     sameSubject.find(
       (row) =>
+        subjectRefOf(row) === subjectRef &&
         (row.status === "pending" || row.status === "nominated") && nameKey(row.statement) === said && (row.deadline ?? null) === deadline
     ) ?? null
   );

@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { formatDate } from "../shared/dates";
 import { flames, quoteStatement, statusLabel, typeLabel } from "../shared/format";
+import { takeTemp } from "../shared/jev";
 import type { Card } from "./api";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -135,7 +136,12 @@ export function Slip({ card, footer }: { card: Card; footer?: ComponentChildren 
         <p className="mt-1 font-serif text-lg leading-snug">{quoteStatement(card.statement, card.capture === "reply")}</p>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-stone-400 pt-2 font-mono text-xs text-stone-600">
           <span>{dueText(card)}</span>
-          {card.type === "take" ? <Flames heat={card.heat} /> : null}
+          {card.type === "take" ? (
+            <span>
+              {card.tempCheck ? <span title="Temp check">🌡️ {takeTemp(card.tempCheck)}° · </span> : null}
+              <Flames heat={card.heat} />
+            </span>
+          ) : null}
         </div>
         {card.nomination && card.nomination.state === "pending" ? (
           <p className="mt-2 font-mono text-xs text-sky-700">
