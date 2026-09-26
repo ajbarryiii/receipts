@@ -1,0 +1,24 @@
+{
+  "name": "receipts",
+  "private": true,
+  "type": "module",
+  "description": "Receipts: an iMessage-native record book for friend-group takes, promises, and bets.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --import tsx --test \"tests/**/*.test.ts\" \"bridge/test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tests/tsconfig.json && tsc -p bridge/tsconfig.json",
+    "dev": "cd app && lakebed dev",
+    "deploy": "cd app && lakebed deploy",
+    "bridge:build": "esbuild bridge/src/main.ts --bundle --platform=node --format=esm --target=node20 --outfile=bridge/dist/receipts-bridge.mjs",
+    "bridge:check": "node bridge/dist/receipts-bridge.mjs check"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "esbuild": "0.28.2",
+    "lakebed": "0.0.34",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}
