@@ -11,10 +11,14 @@ iMessage group ──▶ Messages.app ──▶ BlueBubbles ──▶ bridge (Ma
 
 - **Lakebed app** (`app/`) owns everything durable: parsing, receipts, groups, identities, heat votes, scoring,
   settlement, the website, and the HTTP API for the bridge.
-- **Mac bridge** (`bridge/`) is a thin transport. It forwards only `@receipts` messages, sends replies, reminders, and
+- **Mac bridge** (`bridge/`) is a thin transport. It forwards only messages addressing Receipts, sends replies, reminders, and
   announcements back, and catches up after the Mac sleeps. Its only local state is a cursor and an acknowledgement queue.
 
 ## Using it in a group chat
+
+You can also start a message with `receipts`, `Receipts`, or any capitalization without the `@`
+(e.g. `Receipts list` or `Receipts: list`). Leading whitespace is allowed. This handles iMessage contact mentions
+that arrive without the `@`. Explicit `@receipts` mentions still work anywhere in a message.
 
 | Message | What happens |
 | --- | --- |

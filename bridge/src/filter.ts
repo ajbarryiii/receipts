@@ -1,4 +1,4 @@
-// Decides which iMessages leave the Mac. Only "@receipts" messages from other people do.
+// Decides which iMessages leave the Mac. Only messages addressing Receipts from other people do.
 
 import { MAX_MESSAGE_TEXT_LENGTH, type IncomingMessage } from "../../app/shared/bot-api";
 import type { BBChat, BBMessage } from "./bluebubbles";
@@ -11,10 +11,11 @@ export type FilterOptions = {
 };
 
 // Same rule as app/shared/parse.ts mentionsBot; duplicated so the bridge bundle stays tiny.
+const PREFIX = /^(\s*)receipts(?=$|[\s:,!?])/i;
 const MENTION = /(^|[^\w@.])@receipts\b(?![\w-])/i;
 
 export function mentionsReceipts(text: string | null | undefined): boolean {
-  return MENTION.test(text ?? "");
+  return PREFIX.test(text ?? "") || MENTION.test(text ?? "");
 }
 
 export function isGroupChat(chat: BBChat): boolean {
@@ -23,7 +24,7 @@ export function isGroupChat(chat: BBChat): boolean {
 
 /**
  * Converts a BlueBubbles message into the Lakebed payload, or null when it must not be forwarded:
- * the bot's own messages, tapbacks, messages without "@receipts", or direct chats (unless allowed).
+ * the bot's own messages, tapbacks, messages not addressing Receipts, or direct chats (unless allowed).
  */
 export function toIncomingMessage(message: BBMessage, options: FilterOptions): IncomingMessage | null {
   if (message.isFromMe || message.associatedMessageGuid || message.associatedMessageType) {

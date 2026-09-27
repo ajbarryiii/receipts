@@ -1,4 +1,4 @@
-// Parses "@receipts ..." chat messages into commands or receipt drafts.
+// Parses "@receipts ..." or leading "Receipts ..." messages into commands or receipt drafts.
 
 import { findDeadline } from "./dates";
 import type { IsoDate, ReceiptType, SettlementOutcome } from "./types";
@@ -53,6 +53,8 @@ export type ParseOptions = {
   isReply?: boolean;
 };
 
+// Plain contact names only address the bot at the start; do not strip them from receipt text.
+const PREFIX = /^(\s*)receipts(?=$|[\s:,!?])/i;
 const MENTION = /(^|[^\w@.])@receipts\b(?![\w-])/i;
 const MENTION_GLOBAL = /(^|[^\w@.])@receipts\b(?![\w-])/gi;
 
@@ -169,9 +171,9 @@ const PROMISE_VERBS = new Set(["promise", "promises", "promised", "swear", "swea
 const TAKE_VERBS = new Set(["predict", "predicts", "predicted", "guarantee", "guarantees", "guaranteed", "reckon", "reckons"]);
 const FUTURE_TENSE = /\b(will|won't|wont|gonna|going to|never|by the time)\b/i;
 
-/** True when the message addresses the bot with "@receipts". */
+/** True for an @receipts mention or a leading Receipts contact name. */
 export function mentionsBot(text: string): boolean {
-  return MENTION.test(text);
+  return PREFIX.test(text) || MENTION.test(text);
 }
 
 /**
@@ -181,7 +183,7 @@ export function mentionsBot(text: string): boolean {
  * and a full manual receipt ("Dana says ...") is still treated as manual.
  */
 export function parseBotMessage(text: string, today: IsoDate, options: ParseOptions = {}): BotCommand {
-  const mention = MENTION.exec(text);
+  const mention = PREFIX.exec(text) ?? MENTION.exec(text);
   if (!mention) {
     return { kind: "none" };
   }

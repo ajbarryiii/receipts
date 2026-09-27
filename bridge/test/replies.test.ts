@@ -39,13 +39,14 @@ describe("BlueBubblesReplyResolver", () => {
     assert.equal((await resolver.resolve(command))?.ambiguous, true);
   });
 
-  it("ignores other @receipts replies, tapbacks, and later replies when judging a thread", async () => {
+  it("ignores other Receipts replies, tapbacks, and later replies when judging a thread", async () => {
     const source = bbMessage({ text: "Warriors top 4" });
     const earlierCommand = bbMessage({ text: "@receipts #take by Apr 15 2027", threadOriginatorGuid: source.guid });
+    const plainCommand = bbMessage({ text: "Receipts #take by Apr 15 2027", threadOriginatorGuid: source.guid });
     const tapback = bbMessage({ text: "Loved “Warriors top 4”", threadOriginatorGuid: source.guid, associatedMessageType: "love", associatedMessageGuid: `p:0/${source.guid}` });
     const command = bbMessage({ text: "@receipts #take by May 1 2027", threadOriginatorGuid: source.guid });
     const later = bbMessage({ text: "lol", threadOriginatorGuid: source.guid });
-    bluebubbles.messages.push(source, earlierCommand, tapback, command, later);
+    bluebubbles.messages.push(source, earlierCommand, plainCommand, tapback, command, later);
     assert.equal((await resolver.resolve(command))?.ambiguous, false);
   });
 

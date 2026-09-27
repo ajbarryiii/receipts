@@ -31,6 +31,18 @@ describe("toIncomingMessage", () => {
     });
   });
 
+  it("forwards leading contact names without changing their text", () => {
+    for (const text of ["receipts list", "Receipts list", "RECEIPTS list", "  Receipts: list", "Receipts, list", "Receipts"]) {
+      assert.equal(toIncomingMessage(bbMessage({ text }), options)?.text, text);
+    }
+  });
+
+  it("keeps ordinary receipts chatter and similar names on the Mac", () => {
+    for (const text of ["send receipts please", "receiptsbot list", "receipts-bot list", "receipts_foo", "receipts.com", "receipts@example.com", "receiptsé list"]) {
+      assert.equal(toIncomingMessage(bbMessage({ text }), options), null, text);
+    }
+  });
+
   it("uses a null chat name for unnamed groups", () => {
     const message = bbMessage({ chats: [{ guid: GROUP, displayName: "", style: 43 }] });
     assert.equal(toIncomingMessage(message, options)?.chatName, null);

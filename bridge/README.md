@@ -5,9 +5,10 @@ A small Node.js daemon that connects BlueBubbles on a Mac to the Receipts Lakebe
 ## What it does
 
 1. Receives BlueBubbles `new-message` webhooks on `127.0.0.1`.
-2. Drops everything except messages from other people that contain `@receipts`. Tapbacks, the bot's own messages, and
+2. Drops everything except messages from other people that contain `@receipts` or start with `Receipts`
+   (case-insensitive, with optional leading whitespace). Tapbacks, the bot's own messages, and
    one-to-one chats (unless allowed) never leave the Mac.
-3. If an `@receipts` message is a native iMessage reply, looks up **that one** replied-to message in BlueBubbles
+3. If a message addressing Receipts is a native iMessage reply, looks up **that one** replied-to message in BlueBubbles
    (`threadOriginatorGuid` → `GET /api/v1/message/:guid`) and attaches its text, author, and timestamp. It also checks
    locally whether the thread already had other replies. iMessage only records a thread's first message, so in that
    case it marks the reply `ambiguous` and Lakebed asks for the take to be spelled out. Thread messages are never sent.
@@ -42,6 +43,12 @@ bridge records "sent but not yet acknowledged" locally, so a restart never resen
 
 Logs: `~/Library/Logs/ReceiptsBridge/bridge.log`. Check connectivity any time with
 `node "$HOME/Library/Application Support/ReceiptsBridge/receipts-bridge.mjs" check`.
+
+## Updating
+
+After deploying the updated Lakebed app, run `git pull` and `sh bridge/install.sh` from the repository in the
+Receipts Bot macOS user. The installer rebuilds and copies the bridge bundle, checks connectivity, and restarts
+the LaunchAgent. Existing configuration and state are preserved. Pulling alone does not update the installed bundle.
 
 ## Local state
 

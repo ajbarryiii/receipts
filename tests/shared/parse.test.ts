@@ -19,9 +19,39 @@ describe("mentionsBot", () => {
     assert.equal(mentionsBot("@receipts #take JR says X"), true);
     assert.equal(mentionsBot("lol @Receipts list"), true);
     assert.equal(mentionsBot("@RECEIPTS"), true);
-    assert.equal(mentionsBot("receipts please"), false);
+    assert.equal(mentionsBot("receipts please"), true);
     assert.equal(mentionsBot("mail me at jr@receipts.com"), false);
     assert.equal(mentionsBot("@receiptsbot"), false);
+  });
+});
+
+describe("plain Receipts prefixes", () => {
+  it("accepts contact names, capitalization, whitespace, and separators", () => {
+    for (const prefix of ["receipts", "Receipts", "RECEIPTS", "  Receipts", "\tReceipts:", "Receipts,"]) {
+      assert.equal(mentionsBot(`${prefix} list`), true);
+      assert.deepEqual(parse(`${prefix} list`), { kind: "list" });
+    }
+    assert.deepEqual(parse("Receipts"), { kind: "help" });
+  });
+
+  it("ignores ordinary mentions, longer words, domains, and addresses", () => {
+    for (const text of ["send receipts please", "receiptsbot list", "receipts-bot list", "receipts_foo", "receipts.com", "receipts@example.com", "receiptsé list"]) {
+      assert.equal(mentionsBot(text), false, text);
+      assert.deepEqual(parse(text), { kind: "none" }, text);
+    }
+  });
+
+  it("preserves receipt text beginning with the same word", () => {
+    assert.deepEqual(parse("Receipts receipts will be ready by Oct 1 2027"), parse("@receipts receipts will be ready by Oct 1 2027"));
+  });
+
+  it("parses native reply commands with and without the @ identically", () => {
+    for (const body of ["", "#take by Apr 15 2027", "exposed", "told you so", "accept 43"]) {
+      assert.deepEqual(
+        parseBotMessage(`Receipts ${body}`, TODAY, { isReply: true }),
+        parseBotMessage(`@receipts ${body}`, TODAY, { isReply: true })
+      );
+    }
   });
 });
 
