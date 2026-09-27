@@ -96,6 +96,15 @@ export const COMMAND_GUIDE: readonly GuideCommandGroup[] = [
     ]
   },
   {
+    title: "Rate takes",
+    commands: [{
+      text: "@receipts 43 🔥🔥",
+      reply: false,
+      effect: "Rates #43 with two flames. Use 1–5 flames; send again to change your vote. No web account needed.",
+      kind: "rate"
+    }]
+  },
+  {
     title: "Settle up",
     commands: [
       {

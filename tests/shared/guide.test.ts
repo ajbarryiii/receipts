@@ -42,6 +42,7 @@ describe("COMMAND_GUIDE", () => {
       "show",
       "cancel",
       "settle",
+      "rate",
       "accept",
       "reject",
       "nominations",

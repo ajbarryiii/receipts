@@ -57,6 +57,7 @@ import {
   subjectRefOf,
   toChatReceipt
 } from "./model";
+import { recordHeatVote, voteBlockReason } from "./heat";
 import { randomToken } from "./tokens";
 
 export type BotOptions = {
@@ -287,6 +288,9 @@ async function runCommand(command: Exclude<BotCommand, { kind: "none" }>, contex
     case "reject":
       return respondToNomination(command.number, command.kind === "accept", context);
 
+    case "rate":
+      return rateInChat(command.number, command.flames, context);
+
     case "settle":
       return settleInChat(command.number, command.outcome, context);
 
@@ -361,6 +365,19 @@ async function runCommand(command: Exclude<BotCommand, { kind: "none" }>, contex
     }
 
   }
+}
+
+/** Rates a take without requiring a linked web account. */
+async function rateInChat(number: number, flames: number, context: CommandContext): Promise<string> {
+  const { db, group, identity, options } = context;
+  const receipt = await receiptByNumber(db, group.id, number);
+  if (!receipt) return `🧾 No receipt #${number} here.`;
+  if (receipt.status === "canceled") return `🧾 Receipt #${number} was canceled.`;
+  const voter = { identityId: identity.id, userId: identity.userId };
+  const blocked = voteBlockReason(receipt, receipt.subjectName, voter, options.now);
+  if (blocked) return `🧾 ${blocked}`;
+  const heat = await recordHeatVote(db, receipt, voter, flames, options.now);
+  return `🧾 Receipt #${number}: your vote is ${"🔥".repeat(flames)}. Group heat: ${"🔥".repeat(heat ?? 1)}.`;
 }
 
 /** "@receipts lfg": starts the group's one Take Blitz, or says where it stands. */

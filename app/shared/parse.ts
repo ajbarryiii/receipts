@@ -34,6 +34,7 @@ export type BotCommand =
   | { kind: "toldYouSo" }
   | { kind: "show"; number: number }
   | { kind: "cancel"; number: number }
+  | { kind: "rate"; number: number; flames: number }
   | { kind: "settle"; number: number; outcome: SettlementOutcome }
   | { kind: "accept"; number: number }
   | { kind: "reject"; number: number }
@@ -229,6 +230,14 @@ function parseCommand(body: string): BotCommand | null {
   const simple = Object.hasOwn(SIMPLE_COMMANDS, lower) ? SIMPLE_COMMANDS[lower] : undefined;
   if (simple) {
     return simple;
+  }
+  const rating = /^#?(\d{1,6})\s*(🔥.*)$/u.exec(trimmed);
+  if (rating || /^🔥/u.test(trimmed)) {
+    const fires = rating?.[2].replace(/[\s\uFE0F]/gu, "") ?? "";
+    if (!rating || !/^(?:🔥){1,5}$/u.test(fires)) {
+      return { kind: "invalid", reason: "Rate a take with its number and 1–5 flames, like Receipts 43 🔥🔥." };
+    }
+    return { kind: "rate", number: Number(rating[1]), flames: [...fires].length };
   }
   const numbered = /^(cancel|accept|reject|decline)(?:\s+#?(\d{1,6}))?$/.exec(lower);
   if (numbered) {

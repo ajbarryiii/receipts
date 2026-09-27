@@ -75,6 +75,18 @@ describe("parseBotMessage commands", () => {
     assert.deepEqual(parse("@receipts setup"), { kind: "setup" });
   });
 
+  it("parses 1–5 flame ratings, including spaced emoji and presentation selectors", () => {
+    for (let flames = 1; flames <= 5; flames += 1) {
+      for (const prefix of ["@receipts", "Receipts"]) {
+        assert.deepEqual(parse(`${prefix} 43 ${"🔥".repeat(flames)}`), { kind: "rate", number: 43, flames });
+      }
+    }
+    assert.deepEqual(parse("Receipts #43 🔥️ 🔥️"), { kind: "rate", number: 43, flames: 2 });
+    for (const text of ["Receipts 43 🔥🔥🔥🔥🔥🔥", "Receipts 43 🔥oops", "Receipts 🔥🔥"]) {
+      assert.equal(parse(text).kind, "invalid", text);
+    }
+  });
+
   it("recognizes numbered commands", () => {
     assert.deepEqual(parse("@receipts 43"), { kind: "show", number: 43 });
     assert.deepEqual(parse("@receipts #43"), { kind: "show", number: 43 });

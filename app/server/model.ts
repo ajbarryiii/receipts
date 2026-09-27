@@ -20,6 +20,7 @@ import {
   type SettlementOutcome,
   type SubjectRef
 } from "../shared/types";
+import { linkHeatVotes } from "./heat";
 import type { AuthContext } from "lakebed/server";
 import type { GroupRow, IdentityRow, MembershipRow, ReadDb, ReceiptRow, WriteDb } from "./db";
 
@@ -431,6 +432,7 @@ export async function linkIdentity(db: WriteDb, identity: IdentityRow, userId: s
   for (const receipt of created) {
     await db.receipts.update(receipt.id, { createdByUserId: userId });
   }
+  await linkHeatVotes(db, identity.id, userId, Date.now());
   const settled = await db.settlements.withIndex("by_settler_identity", (q) => q.eq("settledByIdentityId", identity.id)).take(MAX_GROUP_RECEIPTS);
   for (const settlement of settled) {
     await db.settlements.update(settlement.id, { settledByUserId: userId });

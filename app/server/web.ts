@@ -3,7 +3,7 @@
 
 import { dueAtFor, isIsoDate } from "../shared/dates";
 import { maskHandle } from "../shared/format";
-import { computeStandings, isFlameRating, medianHeat, standingFor, takePoints } from "../shared/scoring";
+import { computeStandings, standingFor, takePoints } from "../shared/scoring";
 import {
   isSettlementOutcome,
   OFFICIAL_STATUSES,
@@ -40,6 +40,7 @@ import {
   toCard,
   toScored
 } from "./model";
+import { MAX_VOTES, recordHeatVote, voteBlockReason } from "./heat";
 import { isTokenShaped } from "./tokens";
 
 export const MAX_NOTES_LENGTH = 500;
@@ -48,7 +49,6 @@ export const MAX_GROUP_NAME_LENGTH = 60;
 const DUE_SOON_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const RECENT_LIMIT = 10;
 const TYPE_LIST_LIMIT = 20;
-const MAX_VOTES = 200;
 
 export async function homeView(ctx: WebReadCtx): Promise<HomeView> {
   const me = ctx.auth.requireSignedIn();
@@ -128,9 +128,9 @@ export async function receiptDetail(ctx: WebReadCtx, groupId: string, number: nu
     originalText: receipt.originalText,
     createdByName: creatorName(receipt, book),
     dateAmbiguous: receipt.dateAmbiguous,
-    votes: votes.map((vote) => ({ name: names.get(vote.userId) ?? "Former member", flames: vote.flames, isMine: vote.userId === me.userId })),
+    votes: votes.map((vote) => ({ name: (vote.userId && names.get(vote.userId)) || (vote.identityId && book.identities.get(vote.identityId)) || "Former member", flames: vote.flames, isMine: vote.userId === me.userId })),
     myVote: votes.find((vote) => vote.userId === me.userId)?.flames ?? null,
-    voteBlockedReason: voteBlockReason(receipt, card.subjectName, me.userId, now),
+    voteBlockedReason: voteBlockReason(receipt, card.subjectName, { userId: me.userId }, now),
     canSettle: settleBlocked === null,
     settleBlockedReason: settleBlocked,
     canEditDeadline: card.status === "pending",
@@ -269,25 +269,7 @@ export async function voteHeat(ctx: WebWriteCtx, receiptId: string, flames: numb
     throw new Error("Receipt not found.");
   }
   await requireMembership(ctx.db, receipt.groupId, me.userId);
-  if (!isFlameRating(flames)) {
-    throw new Error("Heat must be 1 to 5 flames.");
-  }
-  const blocked = voteBlockReason(receipt, subjectDisplayName(receipt, await memberNames(ctx.db, receipt.groupId)), me.userId, now);
-  if (blocked) {
-    throw new Error(blocked);
-  }
-
-  const existing = await ctx.db.heatVotes
-    .withIndex("by_receipt_user", (q) => q.eq("receiptId", receipt.id).eq("userId", me.userId))
-    .first();
-  if (existing) {
-    await ctx.db.heatVotes.update(existing.id, { flames });
-  } else {
-    await ctx.db.heatVotes.insert({ receiptId: receipt.id, userId: me.userId, flames });
-  }
-  const votes = await ctx.db.heatVotes.withIndex("by_receipt", (q) => q.eq("receiptId", receipt.id)).take(MAX_VOTES);
-  const heat = medianHeat(votes.map((vote) => vote.flames));
-  await ctx.db.receipts.update(receipt.id, { heat, voteCount: votes.length });
+  const heat = await recordHeatVote(ctx.db, receipt, { userId: me.userId }, flames, now);
   return { heat };
 }
 
@@ -432,15 +414,6 @@ export async function renameGroup(ctx: WebWriteCtx, groupId: string, name: strin
 
 // --- Helpers ---------------------------------------------------------------
 
-function voteBlockReason(receipt: ReceiptRow, subjectName: string, userId: string, now: number): string | null {
-  if (receipt.type !== "take") return "Only takes can be rated.";
-  if (receipt.status === "nominated") return `Voting opens once ${subjectName} accepts.`;
-  if (receipt.status === "rejected") return "Declined nominations aren't rated.";
-  if (receipt.status !== "pending") return "Voting closed when this was settled.";
-  if (receipt.dueAt !== undefined && now >= receipt.dueAt) return "Voting closed at the deadline.";
-  if (receipt.subjectUserId === userId) return "You can't rate your own take.";
-  return null;
-}
 
 function settledFirst(cards: ReceiptCard[]): ReceiptCard[] {
   return cards

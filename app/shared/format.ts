@@ -190,6 +190,7 @@ export function helpMessage(appUrl: string): string {
     "@receipts upcoming · list · mine",
     "@receipts 43 · cancel 43",
     "@receipts 43 right / wrong / void (settle it)",
+    "@receipts 43 🔥🔥 (rate it with 1–5 flames)",
     "@receipts join (link your profile)",
     "@receipts setup (invite link for the record book)",
     "@receipts lfg (start the 24-hour take blitz)",

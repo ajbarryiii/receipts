@@ -115,11 +115,15 @@ export const schema = {
 
   heatVotes: table({
     receiptId: id("receipts"),
-    userId: userId(),
+    userId: userId().optional(),
+    identityId: id("identities").optional(),
+    votedAt: number().optional(),
     flames: number()
   })
     .index("by_receipt", ["receiptId"])
-    .index("by_receipt_user", ["receiptId", "userId"]),
+    .index("by_receipt_user", ["receiptId", "userId"])
+    .index("by_receipt_identity", ["receiptId", "identityId"])
+    .index("by_identity", ["identityId"]),
 
   settlements: table({
     receiptId: id("receipts"),

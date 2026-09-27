@@ -28,6 +28,7 @@ that arrive without the `@`. Explicit `@receipts` mentions still work anywhere i
 | Reply to someone's old message: `@receipts exposed` | Puts it on the record as their take right away, no accepting. Anyone but them and you can settle it. |
 | Reply to your own old message: `@receipts told you so` (or `called it`) | Claims you called it. Someone else confirms it. |
 | `@receipts accept 43` / `@receipts reject 43` | The nominated message's author answers a nomination. |
+| `Receipts 43 🔥🔥` | Rates a take with 1–5 flames, no account needed. Send again to update your vote. |
 | `@receipts 43 right` / `wrong` / `void` | Settles #43 any time. Also `kept`/`broken`, `won`/`lost`, `fulfilled`/`not fulfilled`. The take's author and its nominator can't settle it. |
 | `#promise`, `#bet`, `#conditional`, or no tag | Other receipt types. Untagged receipts are inferred. |
 | `@receipts upcoming` · `list` · `nominations` · `mine` · `43` | Look things up. |
@@ -37,7 +38,9 @@ that arrive without the `@`. Explicit `@receipts` mentions still work anywhere i
 | `@receipts setup` | 7-day invite link to the group's record book. |
 | `@receipts lfg` | Starts the group's one-time Take Blitz (below), with the record book invite. |
 
-On the website, members rate the heat of takes (1–5 🔥, median wins, locked at settlement), settle receipts, accept or
+In chat or on the website, members rate the heat of takes (1–5 🔥, median wins, voting closes at the deadline or settlement).
+Chat votes carry over when you link your web account, keeping your latest vote if you voted in both places.
+On the website, members also settle receipts, accept or
 reject nominations, and browse standings and profiles. A correct take earns 1/2/4/7/12 points by heat. Only the group
 owner can change an outcome after it's settled, and never on their own take.
 
